@@ -11,7 +11,15 @@ process.on('uncaughtException', (err) => {
 });
 
 // Establish Database Connection
-connectDB();
+// connectDB ab error throw karta hai, is liye yahan catch karna zaroori hai
+connectDB().catch((err) => {
+  logger.error(`❌ Startup DB failure: ${err.message}`);
+  // Production mein band kar dein, development mein server chalta rahe
+  if (env.NODE_ENV === 'production') {
+    logger.error('Exiting process due to database connection failure in production.');
+    process.exit(1);
+  }
+});
 
 // Start HTTP Server
 const server = app.listen(env.PORT, () => {

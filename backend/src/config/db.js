@@ -5,14 +5,13 @@ const logger = require('../utils/logger');
 let isConnected = false;
 
 const connectDB = async () => {
-  if (isConnected) {
-    logger.info('Database connection already established.');
+  if (isConnected || mongoose.connection.readyState === 1) {
     return;
   }
 
   const options = {
-    maxPoolSize: 20, // Concurrency load management: connection pooling
-    minPoolSize: 5,
+    maxPoolSize: 5,
+    minPoolSize: 0,
     serverSelectionTimeoutMS: 5000,
     socketTimeoutMS: 45000,
     family: 4
@@ -21,20 +20,17 @@ const connectDB = async () => {
   try {
     const conn = await mongoose.connect(env.MONGODB_URI, options);
     isConnected = true;
-    logger.info(`✅ MongoDB Connected successfully: ${conn.connection.host}/${conn.connection.name}`);
+    logger.info(`✅ MongoDB Connected: ${conn.connection.host}/${conn.connection.name}`);
   } catch (error) {
     logger.error(`❌ MongoDB Connection Error: ${error.message}`);
-    // In development or test, we do not abruptly exit so the app can still serve fallback endpoints
-    if (env.NODE_ENV === 'production') {
-      logger.error('Exiting process due to database connection failure in production.');
-      process.exit(1);
-    }
+    // Vercel pe process.exit mat karein, error throw karein
+    throw error;
   }
 };
 
 mongoose.connection.on('disconnected', () => {
   isConnected = false;
-  logger.warn('MongoDB disconnected. Retrying connection...');
+  logger.warn('MongoDB disconnected.');
 });
 
 mongoose.connection.on('error', (err) => {
