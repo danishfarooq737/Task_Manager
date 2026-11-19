@@ -1,0 +1,43 @@
+# ==========================================
+# DF TaskManager - Monorepo Git Ignore
+# ==========================================
+
+# Dependencies
+node_modules/
+*/node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Environment and Secrets (CRITICAL: Never commit .env files)
+.env
+.env.*
+!.env.example
+*/.env
+*/.env.*
+!*/.env.example
+
+# Build Artifacts
+dist/
+build/
+*/dist/
+*/build/
+
+# Testing & Coverage
+coverage/
+*/coverage/
+.nyc_output/
+
+# Logs
+logs/
+*.log
+*/logs/
+
+# Zip packages
+*.zip
+
+# Operating System Files
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/

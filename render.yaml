@@ -1,0 +1,33 @@
+services:
+  # Backend Web Service
+  - type: web
+    name: df-taskmanager-api
+    env: node
+    plan: free
+    buildCommand: cd backend && npm install
+    startCommand: cd backend && npm start
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: 5000
+      - key: API_PREFIX
+        value: /api/v1
+      - key: CORS_ORIGIN
+        value: https://df-taskmanager.vercel.app
+      - key: MONGODB_URI
+        sync: false
+      - key: JWT_SECRET
+        generateValue: true
+      - key: JWT_EXPIRES_IN
+        value: 7d
+      - key: JWT_COOKIE_EXPIRES_DAYS
+        value: 7
+      - key: RATE_LIMIT_WINDOW_MS
+        value: 900000
+      - key: RATE_LIMIT_MAX_REQUESTS
+        value: 200
+      - key: AUTH_RATE_LIMIT_MAX_REQUESTS
+        value: 15
+      - key: LOG_LEVEL
+        value: info
