@@ -6,6 +6,7 @@ const mongoSanitize = require('express-mongo-sanitize');
 const morgan = require('morgan');
 
 const env = require('./config/env');
+const connectDB = require('./config/db');
 const logger = require('./utils/logger');
 const sanitizeInputs = require('./middleware/sanitizeMiddleware');
 const { apiLimiter } = require('./middleware/rateLimiterMiddleware');
@@ -70,6 +71,16 @@ app.use(mongoSanitize({ replaceWith: '_' }));
 
 // 6. Zero-Trust XSS & Prototype Pollution Sanitization
 app.use(sanitizeInputs);
+
+// 6.5 Database connection (Vercel serverless ke liye: har request pe check, connection reuse hota hai)
+app.use(async (req, res, next) => {
+  try {
+    await connectDB();
+    next();
+  } catch (err) {
+    next(err);
+  }
+});
 
 // 7. Global API Rate Limiting
 app.use(env.API_PREFIX, apiLimiter);
