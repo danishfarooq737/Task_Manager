@@ -23,7 +23,14 @@ const parsedEnv = envSchema.safeParse(process.env);
 if (!parsedEnv.success) {
   console.error('❌ FATAL: Invalid backend environment configuration:');
   console.error(JSON.stringify(parsedEnv.error.format(), null, 2));
-  process.exit(1);
+  // FIX (Vercel serverless): process.exit(1) yahan NAHI chal sakta.
+  // Serverless function mein process.exit container ko abruptly kill karta
+  // hai aur Vercel har request par 500 FUNCTION_INVOCATION_FAILED deta hai.
+  // Error throw karein taake Vercel logs mein saaf wajah nazar aaye.
+  // (Render/local par server.js ka apna handling waise hi kaam karta hai.)
+  throw new Error(
+    'Invalid backend environment configuration — check Vercel env vars (JWT_SECRET kam se kam 16 characters ka hona chahiye)'
+  );
 }
 
 module.exports = Object.freeze(parsedEnv.data);
