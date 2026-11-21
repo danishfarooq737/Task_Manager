@@ -21,6 +21,24 @@ const app = express();
 // Trust proxy for secure cookies and rate limiting behind reverse proxies (Render, Vercel, Nginx)
 app.set('trust proxy', 1);
 
+// ---- Allowed origins (shared by CORS and CSP) ----
+// CORS_ORIGIN may contain one or more origins separated by commas.
+// Spaces and trailing slashes are removed so the match is exact.
+const configuredOrigins = (env.CORS_ORIGIN || '')
+  .split(',')
+  .map((o) => o.trim().replace(/\/+$/, ''))
+  .filter(Boolean);
+
+const allowedOrigins = [
+  ...configuredOrigins,
+  'http://localhost:5173',
+  'http://127.0.0.1:5173'
+];
+
+// Allows every Vercel deployment of this project (production + previews),
+// e.g. https://taskmanager-8prvogdsm-gro-internship.vercel.app
+const vercelPreviewPattern = /^https:\/\/taskmanager-[a-z0-9-]+-gro-internship\.vercel\.app$/;
+
 // 1. Helmet Security Headers (OWASP Mitigation)
 app.use(
   helmet({
@@ -31,7 +49,7 @@ app.use(
         styleSrc: ["'self'", "'unsafe-inline'", 'https://fonts.googleapis.com'],
         fontSrc: ["'self'", 'https://fonts.gstatic.com'],
         imgSrc: ["'self'", 'data:', 'https:'],
-        connectSrc: ["'self'", env.CORS_ORIGIN, 'http://localhost:5173']
+        connectSrc: ["'self'", ...allowedOrigins]
       }
     },
     crossOriginEmbedderPolicy: false
@@ -39,21 +57,28 @@ app.use(
 );
 
 // 2. Strict CORS Policy (Zero Trust - No Wildcards)
-const allowedOrigins = [env.CORS_ORIGIN, 'http://localhost:5173', 'http://127.0.0.1:5173'];
-
 app.use(
   cors({
     origin: function (origin, callback) {
-      // Allow requests with no origin (like mobile apps, curl, or server-to-server)
-      if (!origin || allowedOrigins.includes(origin) || env.NODE_ENV === 'development') {
-        callback(null, true);
-      } else {
-        callback(new Error(`CORS policy violation: Access from ${origin} denied.`));
+      // Allow requests with no origin (mobile apps, curl, server-to-server)
+      if (
+        !origin ||
+        allowedOrigins.includes(origin) ||
+        vercelPreviewPattern.test(origin) ||
+        env.NODE_ENV === 'development'
+      ) {
+        return callback(null, true);
       }
+
+      // Rejected origin: log it and respond WITHOUT CORS headers.
+      // (Passing an Error here would turn the preflight into a 500.)
+      logger.warn(`CORS blocked origin: ${origin}`);
+      return callback(null, false);
     },
     credentials: true, // Allow HttpOnly authentication cookies
     methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
-    allowedHeaders: ['Content-Type', 'Authorization', 'Idempotency-Key', 'X-Requested-With']
+    allowedHeaders: ['Content-Type', 'Authorization', 'Idempotency-Key', 'X-Requested-With'],
+    optionsSuccessStatus: 204
   })
 );
 
@@ -72,7 +97,7 @@ app.use(mongoSanitize({ replaceWith: '_' }));
 // 6. Zero-Trust XSS & Prototype Pollution Sanitization
 app.use(sanitizeInputs);
 
-// 6.5 Database connection (Vercel serverless ke liye: har request pe check, connection reuse hota hai)
+// 6.5 Database connection (serverless-friendly: checked on every request, connection is reused)
 app.use(async (req, res, next) => {
   try {
     await connectDB();
